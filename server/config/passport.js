@@ -28,20 +28,29 @@ module.exports = function (passport) {
                     }
 
                     // Create New User (Default to Patient)
-                    // Note: Real apps might redirect to a role selection page. 
-                    // We default to Patient for seamless entry.
-                    const newUser = new Patient({
+                    const newUser = new User({
                         googleId: profile.id,
                         name: profile.displayName,
                         email: profile.emails[0].value,
                         role: 'patient',
-                        isVerified: true, // Google Email is verified implicitly
-                        profile: {
-                            photo: profile.photos[0].value
-                        }
+                        isVerified: true
                     });
 
                     await newUser.save();
+
+                    // Create linked Patient Profile
+                    const newPatient = new Patient({
+                        user: newUser._id,
+                        isVerified: true,
+                        profile: {
+                            // Google photo could be stored here or on User if schema allowed, 
+                            // but Patient schema has 'profile' obj.
+                            // keeping it simple for now, maybe add photo later if needed since Patient schema doesn't have photo field explicitly in profile object shown earlier.
+                        }
+                    });
+
+                    await newPatient.save();
+
                     return done(null, newUser);
                 }
             } catch (err) {

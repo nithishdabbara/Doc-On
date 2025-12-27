@@ -27,14 +27,7 @@ const UserSchema = new mongoose.Schema({
     isVerified: {
         type: Boolean,
         default: false
-    },
-    // Add profile here to ensure it's not stripped for Google Users handled as base Users
-    profile: {
-        age: Number,
-        gender: String,
-        phone: String,
-        address: String
     }
-}, { discriminatorKey: 'role', timestamps: true });
+}, { timestamps: true });
 
 module.exports = mongoose.model('User', UserSchema);

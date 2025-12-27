@@ -9,14 +9,37 @@ const upload = require('../middleware/upload');
 // Upload a new medical record
 router.post('/upload', [auth, upload.single('file')], async (req, res) => {
     try {
-        const { title, type } = req.body;
+        const { title, type, patientId } = req.body;
 
         if (!req.file) {
             return res.status(400).json({ msg: 'No file uploaded' });
         }
 
+        let targetPatientId = req.user.id;
+        let doctorId = null;
+
+        // If Doctor is uploading
+        if (req.user.role === 'doctor') {
+            if (!patientId) {
+                return res.status(400).json({ msg: 'Patient ID is required for doctor uploads' });
+            }
+            // Verify Relationship
+            const relationship = await Appointment.findOne({
+                doctor: req.user.id,
+                patient: patientId
+            });
+
+            if (!relationship) {
+                return res.status(403).json({ msg: 'Access denied. You have not treated this patient.' });
+            }
+
+            targetPatientId = patientId;
+            doctorId = req.user.id;
+        }
+
         const newRecord = new MedicalRecord({
-            patient: req.user.id,
+            patient: targetPatientId,
+            doctor: doctorId,
             title,
             type,
             fileUrl: `/uploads/${req.file.filename}`
@@ -96,7 +119,16 @@ router.get('/patient/:patientId', auth, async (req, res) => {
         }
 
         // 3. Fetch Records
-        const records = await MedicalRecord.find({ patient: patientId }).sort({ date: -1 });
+        // Security Update: Only show records created by THIS doctor OR records with no specific doctor (patient uploads)
+        // This prevents doctors from seeing records created by other doctors.
+        const records = await MedicalRecord.find({
+            patient: patientId,
+            $or: [
+                { doctor: req.user.id }, // Created by this doctor
+                { doctor: null },        // Created by patient (no doctor ID)
+                { doctor: { $exists: false } } // Handle legacy records without doctor field
+            ]
+        }).sort({ date: -1 });
         res.json(records);
 
     } catch (err) {

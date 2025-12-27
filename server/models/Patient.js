@@ -1,7 +1,11 @@
 const mongoose = require('mongoose');
-const User = require('./User');
 
 const PatientSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
     isVerified: { type: Boolean, default: true }, // Patients are verified by default
     profile: {
         age: { type: Number },
@@ -9,6 +13,6 @@ const PatientSchema = new mongoose.Schema({
         phone: { type: String },
         address: { type: String }
     }
-});
+}, { timestamps: true });
 
-module.exports = User.discriminator('patient', PatientSchema);
+module.exports = mongoose.model('Patient', PatientSchema);

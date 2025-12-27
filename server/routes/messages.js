@@ -3,6 +3,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const Message = require('../models/Message');
 const User = require('../models/User');
+const Doctor = require('../models/Doctor');
 
 const upload = require('../middleware/upload'); // Re-using existing middleware
 
@@ -39,10 +40,20 @@ router.get('/contacts', auth, async (req, res) => {
 
         const contactIds = [...new Set([...sentTo, ...receivedFrom])];
 
-        const contacts = await User.find({ _id: { $in: contactIds } }).select('name role specialization email');
+        const users = await User.find({ _id: { $in: contactIds } }).select('name role email');
 
-        // Also include all doctors if user is patient, or all patients if doctor (simplification for "new chat")
-        // For now, let's just return the active conversation partners
+        // Enhance with Doctor details (Specialization)
+        const contacts = await Promise.all(users.map(async (user) => {
+            let extra = {};
+            if (user.role === 'doctor') {
+                const doc = await Doctor.findOne({ user: user._id }).select('specialization');
+                if (doc) extra.specialization = doc.specialization;
+            }
+            return {
+                ...user.toObject(),
+                ...extra
+            };
+        }));
 
         res.json(contacts);
     } catch (err) {

@@ -1,134 +1,87 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../utils/api';
 
 const SmartSymptomChecker = () => {
-    const [symptom, setSymptom] = useState('');
-    const [advice, setAdvice] = useState(null); // { type: 'care' | 'emergency', text: '', specialty: '' }
+    const [symptoms, setSymptoms] = useState('');
+    const [result, setResult] = useState(null);
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
-    const KNOWLEDGE_BASE = [
-        {
-            keywords: ['chest', 'heart', 'pain', 'attack', 'pressure'], specialty: 'Cardiologist', urgency: 'critical',
-            advice: '⚠️ CRITICAL WARNING: Severe chest pain, pressure, or shortness of breath may indicate a heart attack. Call Emergency Services immediately. Do not drive yourself. Chew an aspirin if not allergic while waiting.'
-        },
-        {
-            keywords: ['headache', 'migraine', 'head', 'dizzy'], specialty: 'Neurologist', urgency: 'normal',
-            advice: '🏠 Home Care: Rest in a dark, quiet room. Drink plenty of water to rule out dehydration. If the headache is sudden, severe ("thunderclap"), or follows a head injury, seek emergency care.'
-        },
-        {
-            keywords: ['skin', 'rash', 'itch', 'spots', 'acne', 'hives'], specialty: 'Dermatologist', urgency: 'low',
-            advice: '🏠 Home Care: Avoid scratching to prevent infection. Apply a cool compress or Calamine lotion/Aloe Vera. Take an over-the-counter antihistamine (like Zyrtec/Claritin) if it itches.'
-        },
-        {
-            keywords: ['fever', 'hot', 'temperature', 'shiver'], specialty: 'General Physician', urgency: 'high',
-            advice: '🏠 Home Care: Stay hydrated. Rest. Use acetaminophen (Tylenol) to lower fever. Seek help if fever exceeds 103°F (39.4°C) or lasts more than 3 days.'
-        },
-        {
-            keywords: ['child', 'baby', 'infant', 'kid'], specialty: 'Pediatrician', urgency: 'high',
-            advice: '👶 Pediatric Alert: For infants < 3 months with fever, go to ER immediately. For older children, keep hydrated and monitor activity levels.'
-        },
-        {
-            keywords: ['stomach', 'belly', 'vomit', 'diarrhea', 'nausea', 'gas'], specialty: 'General Physician', urgency: 'normal',
-            advice: '🏠 Home Care: Stick to the BRAT diet (Bananas, Rice, Applesauce, Toast). Sip electrolytes (Pedialyte/Gatorade) to prevent dehydration. Avoid dairy and spicy foods.'
-        },
-        {
-            keywords: ['muscle', 'bone', 'joint', 'ankle', 'knee', 'back', 'sprain', 'fracture'], specialty: 'Orthopedist', urgency: 'normal',
-            advice: '🏠 Home Care: Follow R.I.C.E protocol: Rest, Ice (20 mins), Compression, and Elevation. If you cannot bear weight or the limb is deformed, go to ER/Urgent Care.'
-        },
-        {
-            keywords: ['cold', 'cough', 'flu', 'throat', 'sneeze', 'nose', 'congestion'], specialty: 'General Physician', urgency: 'normal',
-            advice: '🏠 Home Care: Rest and plenty of fluids. Honey and warm water for cough. Gargle salt water for sore throat. Monitor for difficulty breathing.'
-        },
-        {
-            keywords: ['tooth', 'gum', 'jaw', 'dental'], specialty: 'Dentist', urgency: 'normal',
-            advice: '🏠 Home Care: Rinse with warm salt water. Use clove oil for temporary pain relief. Avoid very hot or cold foods.'
-        },
-        {
-            keywords: ['eye', 'vision', 'blur', 'red'], specialty: 'Ophthalmologist', urgency: 'normal',
-            advice: '🏠 Home Care: Do not rub your eyes. If chemical exposure, flush with water for 15 mins immediately. Rest your eyes from screens.'
-        },
-        {
-            keywords: ['anxiety', 'sad', 'depress', 'panic', 'stress'], specialty: 'Psychiatrist', urgency: 'low',
-            advice: '🧘 Self Care: Practice deep breathing (4-7-8 technique). Reach out to a trusted friend or family member. Remember, you are not alone.'
-        }
-    ];
-
-    const handleCheck = (e) => {
-        e.preventDefault();
-        if (!symptom) return;
-
-        const lowerSymptom = symptom.toLowerCase();
-
-        // AI-Lite Matching Logic
-        const match = KNOWLEDGE_BASE.find(entry =>
-            entry.keywords.some(k => lowerSymptom.includes(k))
-        );
-
-        if (match) {
-            setAdvice({
-                type: match.urgency === 'critical' ? 'emergency' : 'care',
-                text: match.advice,
-                specialty: match.specialty,
-                urgency: match.urgency
-            });
-        } else {
-            // No specific advice matched, fall back to search
-            navigate(`/book-appointment?search=${symptom}`);
+    const checkSymptoms = async () => {
+        if (!symptoms.trim()) return;
+        setLoading(true);
+        try {
+            const res = await api.post('/users/analyze-symptoms', { symptoms });
+            setResult(res.data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleBook = () => {
-        if (advice) {
-            navigate(`/book-appointment?specialty=${advice.specialty}&urgency=${advice.urgency}`);
-        }
-    };
-
-    const reset = () => {
-        setSymptom('');
-        setAdvice(null);
+        if (!result) return;
+        // Navigate to booking with pre-filled search
+        navigate(`/book-appointment?search=${result.rawSpecialty}`);
     };
 
     return (
-        <div className={`p-6 rounded-lg shadow-sm border mb-6 transition-all duration-300 ${advice?.type === 'emergency' ? 'bg-red-50 border-red-200' : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100'}`}>
-            <h3 className={`text-lg font-bold mb-2 flex items-center gap-2 ${advice?.type === 'emergency' ? 'text-red-700' : 'text-indigo-900'}`}>
-                {advice ? (advice.type === 'emergency' ? '🚨 Emergency Systems Alert' : '🩺 AI Advice') : '🤖 AI Health Assistant'}
+        <div className="bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-white/50">
+            <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
+                🤖 AI Symptom Checker
             </h3>
 
-            {!advice ? (
-                <>
-                    <p className="text-sm text-gray-600 mb-4">Describe your symptoms (e.g., "bad headache", "chest pain", "skin rash") for instant advice & specialist matching.</p>
-                    <form onSubmit={handleCheck} className="flex gap-2">
-                        <input
-                            type="text"
-                            value={symptom}
-                            onChange={(e) => setSymptom(e.target.value)}
-                            placeholder="Type symptoms here..."
-                            className="flex-1 p-2 border rounded-md focus:ring-2 focus:ring-indigo-300 outline-none"
-                        />
-                        <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
-                            Analyze
-                        </button>
-                    </form>
-                </>
-            ) : (
+            {!result ? (
                 <div className="space-y-4">
-                    <div className={`p-4 rounded-md ${advice.type === 'emergency' ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-white text-gray-700 border border-indigo-100'}`}>
-                        <p className="font-medium text-lg mb-2">{advice.text}</p>
-                        <p className="text-sm opacity-80">Recommended Specialist: <span className="font-bold">{advice.specialty}</span></p>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Describe your symptoms</label>
+                        <textarea
+                            className="w-full glass-input p-3 rounded-lg border focus:ring-2 focus:ring-purple-500 outline-none"
+                            rows="3"
+                            placeholder="e.g. I have a severe headache and fever..."
+                            value={symptoms}
+                            onChange={(e) => setSymptoms(e.target.value)}
+                        ></textarea>
+                    </div>
+                    <button
+                        onClick={checkSymptoms}
+                        disabled={loading}
+                        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-lg font-bold hover:shadow-lg transition transform hover:-translate-y-0.5 disabled:opacity-50"
+                    >
+                        {loading ? 'Analyzing...' : 'Analyze Symptoms'}
+                    </button>
+                    <p className="text-xs text-gray-500 text-center">
+                        *AI estimation only. Not a medical diagnosis.
+                    </p>
+                </div>
+            ) : (
+                <div className="space-y-4 animate-fade-in">
+                    <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
+                        <p className="text-sm text-purple-600 font-semibold mb-1">Possible Cause:</p>
+                        <p className="text-lg font-bold text-purple-900">{result.diagnosis}</p>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex flex-col gap-2">
+                        <p className="text-sm text-gray-600">Recommended Specialist:</p>
+                        <div className="font-bold text-indigo-700 bg-indigo-50 px-3 py-2 rounded">
+                            👨‍⚕️ {result.specialty}
+                        </div>
+                    </div>
+
+                    <div className="pt-2">
                         <button
                             onClick={handleBook}
-                            className={`flex-1 px-4 py-2 rounded-md font-semibold text-white shadow transition-transform transform active:scale-95 ${advice.type === 'emergency' ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                            className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2"
                         >
-                            Book {advice.specialty}
+                            📅 Book {result.specialty} Now
                         </button>
                         <button
-                            onClick={reset}
-                            className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-gray-700"
+                            onClick={() => { setResult(null); setSymptoms(''); }}
+                            className="w-full mt-2 text-gray-500 text-sm hover:underline"
                         >
-                            Back
+                            Check Another Symptom
                         </button>
                     </div>
                 </div>

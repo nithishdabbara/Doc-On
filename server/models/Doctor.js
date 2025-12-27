@@ -1,7 +1,11 @@
 const mongoose = require('mongoose');
-const User = require('./User');
 
 const DoctorSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
     specialization: {
         type: String
     },
@@ -38,6 +42,6 @@ const DoctorSchema = new mongoose.Schema({
     availableSlots: [{
         type: Date
     }]
-});
+}, { timestamps: true });
 
-module.exports = User.discriminator('doctor', DoctorSchema);
+module.exports = mongoose.model('Doctor', DoctorSchema);

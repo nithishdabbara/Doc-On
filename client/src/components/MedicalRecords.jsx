@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
 
-const MedicalRecords = () => {
+const MedicalRecords = ({ patientId, isDoctorView = false }) => {
     const [records, setRecords] = useState([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
@@ -13,11 +13,16 @@ const MedicalRecords = () => {
 
     useEffect(() => {
         fetchRecords();
-    }, []);
+    }, [patientId]); // Re-fetch if patientId changes
 
     const fetchRecords = async () => {
         try {
-            const res = await api.get('/records');
+            let res;
+            if (isDoctorView && patientId) {
+                res = await api.get(`/records/patient/${patientId}`);
+            } else {
+                res = await api.get('/records');
+            }
             setRecords(res.data);
             setLoading(false);
         } catch (err) {
@@ -40,12 +45,12 @@ const MedicalRecords = () => {
         formData.append('title', title);
         formData.append('type', type);
 
+        if (isDoctorView && patientId) {
+            formData.append('patientId', patientId);
+        }
+
         try {
-            await api.post('/records/upload', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
-            });
+            await api.post('/records/upload', formData);
             // Reset form
             setFile(null);
             setTitle('');
@@ -125,7 +130,9 @@ const MedicalRecords = () => {
 
             {/* Records Grid */}
             <div className="bg-white p-6 rounded-lg shadow">
-                <h3 className="text-lg font-bold mb-4">📂 My Medical Records</h3>
+                <h3 className="text-lg font-bold mb-4">
+                    {isDoctorView ? '📂 Patient Medical Records' : '📂 My Medical Records'}
+                </h3>
                 {loading ? (
                     <p>Loading records...</p>
                 ) : records.length === 0 ? (
@@ -136,8 +143,8 @@ const MedicalRecords = () => {
                             <div key={record._id} className="border rounded-lg p-4 hover:shadow-md transition">
                                 <div className="flex justify-between items-start mb-2">
                                     <span className={`text-xs font-bold px-2 py-1 rounded-full ${record.type === 'Prescription' ? 'bg-green-100 text-green-800' :
-                                            record.type === 'X-Ray' ? 'bg-purple-100 text-purple-800' :
-                                                'bg-blue-100 text-blue-800'
+                                        record.type === 'X-Ray' ? 'bg-purple-100 text-purple-800' :
+                                            'bg-blue-100 text-blue-800'
                                         }`}>
                                         {record.type}
                                     </span>

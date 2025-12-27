@@ -12,7 +12,7 @@ const NotificationSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['reminder', 'alert', 'info'],
+        enum: ['reminder', 'alert', 'info', 'appointment'],
         default: 'info'
     },
     read: {

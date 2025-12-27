@@ -44,7 +44,10 @@ const AppointmentList = ({ role }) => {
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="font-semibold">
-                                {role === 'doctor' ? `Patient: ${apt.patient.name}` : `Doctor: ${apt.doctor.name} (${apt.doctor.specialization})`}
+                                {role === 'doctor'
+                                    ? `Patient: ${apt.patient?.name || 'Unknown'}`
+                                    : `Doctor: ${apt.doctor?.name || 'Unknown'} (${apt.doctor?.specialization || 'N/A'})`
+                                }
                             </p>
                             <p className="text-gray-600">
                                 {new Date(apt.date).toLocaleString()}

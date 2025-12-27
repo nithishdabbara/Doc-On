@@ -51,18 +51,29 @@ router.post('/register', upload.single('licenseProof'), async (req, res) => {
             return res.status(400).json({ msg: 'User already exists' });
         }
 
-        const isVerified = role === 'patient'; // Doctors false by default
-
         // Hash password
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
+        console.log('[REGISTER] Creating User:', { email, role });
+
+        // 1. Create Base User
+        user = new User({
+            name,
+            email,
+            password: hashedPassword,
+            role: role === 'admin' ? 'admin' : (role === 'doctor' ? 'doctor' : 'patient'),
+            isVerified: role === 'patient' || role === 'admin' // Doctors false by default
+        });
+
+        await user.save();
+        console.log('[REGISTER] Base User Saved:', user._id);
+
+        // 2. Create Role-Specific Profile
         if (role === 'doctor') {
-            user = new Doctor({
-                name,
-                email,
-                password: hashedPassword,
-                role: 'doctor',
+            console.log('[REGISTER] Creating Doctor Profile...', { specialization, medicalLicense });
+            const doctor = new Doctor({
+                user: user._id,
                 specialization,
                 medicalLicense,
                 hospitalName,
@@ -71,21 +82,22 @@ router.post('/register', upload.single('licenseProof'), async (req, res) => {
                 registrationYear,
                 stateMedicalCouncil,
                 licenseProof: req.file ? `/uploads/${req.file.filename}` : undefined,
-                isVerified: false // Explicitly false for new doctors
+                isVerified: false
             });
-        } else {
-            // Default to Patient (or Admin if we allowed it, but sticking to Patient for now)
-            user = new Patient({
-                name,
-                email,
-                password: hashedPassword,
-                role: role === 'admin' ? 'admin' : 'patient', // Allow admin creation if needed, though usually seeded
+            await doctor.save();
+            console.log('[REGISTER] Doctor Profile Saved:', doctor._id);
+        } else if (role === 'patient') {
+            console.log('[REGISTER] Creating Patient Profile...');
+            const patient = new Patient({
+                user: user._id,
                 isVerified: true,
                 profile: {}
             });
+            await patient.save();
+            console.log('[REGISTER] Patient Profile Saved:', patient._id);
+        } else if (role === 'admin') {
+            // Admin doesn't have a separate profile collection yet, just the User entry
         }
-
-        await user.save();
 
         const payload = { user: { id: user.id, role: user.role } };
         jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: 3600 }, (err, token) => {
@@ -120,6 +132,14 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ msg: 'Invalid credentials' });
         }
 
+        // Fetch User Profile Data
+        let userProfile = null;
+        if (user.role === 'doctor') {
+            userProfile = await Doctor.findOne({ user: user._id });
+        } else if (user.role === 'patient') {
+            userProfile = await Patient.findOne({ user: user._id });
+        }
+
         const payload = { user: { id: user.id, role: user.role } };
         jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: 3600 }, (err, token) => {
             if (err) throw err;
@@ -130,7 +150,15 @@ router.post('/login', async (req, res) => {
                     name: user.name,
                     email: user.email,
                     role: user.role,
-                    isVerified: user.isVerified
+                    isVerified: user.isVerified,
+                    // Merge profile data if exists
+                    ...(userProfile && user.role === 'doctor' ? {
+                        specialization: userProfile.specialization,
+                        walletBalance: userProfile.walletBalance
+                    } : {}),
+                    ...(userProfile && user.role === 'patient' ? {
+                        profile: userProfile.profile
+                    } : {})
                 }
             });
         });
@@ -145,7 +173,28 @@ router.post('/login', async (req, res) => {
 router.get('/user', require('../middleware/auth'), async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select('-password');
-        res.json(user);
+        let userProfile = null;
+
+        if (user.role === 'doctor') {
+            userProfile = await Doctor.findOne({ user: user._id });
+        } else if (user.role === 'patient') {
+            userProfile = await Patient.findOne({ user: user._id });
+        }
+
+        const userData = {
+            ...user.toObject(),
+            ...(userProfile && user.role === 'doctor' ? {
+                specialization: userProfile.specialization,
+                walletBalance: userProfile.walletBalance,
+                ...userProfile.toObject(), // Spread other doctor fields
+                user: undefined // prevent circular or redundant nesting if any
+            } : {}),
+            ...(userProfile && user.role === 'patient' ? {
+                profile: userProfile.profile
+            } : {})
+        };
+
+        res.json(userData);
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');

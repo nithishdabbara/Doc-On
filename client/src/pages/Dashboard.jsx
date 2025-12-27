@@ -41,7 +41,7 @@ const Dashboard = () => {
     }, []); // Run ONCE on mount
 
     useEffect(() => {
-        if (user && (user.role === 'admin' || user.role === 'doctor')) {
+        if (user && (user.role === 'admin' || user.role === 'doctor' || user.role === 'patient')) {
             api.get('/users/stats')
                 .then(res => setStats(res.data))
                 .catch(err => console.error(err));

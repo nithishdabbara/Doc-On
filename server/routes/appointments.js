@@ -4,17 +4,59 @@ const auth = require('../middleware/auth'); // Need to create this middleware
 const Appointment = require('../models/Appointment');
 const sendEmail = require('../utils/sendEmail');
 
+const Doctor = require('../models/Doctor');
+const Patient = require('../models/Patient');
+const User = require('../models/User');
+
 // GET /api/appointments
 // Get appointments for the logged-in user
 router.get('/', auth, async (req, res) => {
     try {
-        let appointments;
-        if (req.user.role === 'doctor') {
-            let rawAppointments = await Appointment.find({ doctor: req.user.id })
-                .populate({ path: 'patient', select: 'name email profile' }) // Get age
-                .lean(); // Convert to JS objects for sorting
+        let appointments = [];
+        const role = req.user.role;
+        console.log(`[DEBUG] GET /appointments hit. User: ${req.user.id}, Role: ${role}`);
 
-            // Smart Triage Sorting Algorithm
+        if (role === 'admin') {
+            // Admin View: See ALL appointments
+            const rawAppointments = await Appointment.find()
+                .sort({ date: -1 })
+                .populate('patient', 'name email')
+                .lean();
+
+            // Hydrate logic similar to others (simplified for Admin)
+            appointments = await Promise.all(rawAppointments.map(async (apt) => {
+                const doctorUser = await User.findById(apt.doctor);
+                return {
+                    ...apt,
+                    doctor: doctorUser ? { name: doctorUser.name, email: doctorUser.email } : { name: 'Unknown' },
+                    patient: apt.patient || { name: 'Unknown' }
+                };
+            }));
+
+        } else if (role === 'doctor') {
+            // 1. Fetch Appointments
+            const rawAppointments = await Appointment.find({ doctor: req.user.id })
+                .populate('patient', 'name email') // Populate basic User info
+                .lean();
+
+            // 2. Hydrate with Patient Profile (for Age/Gender)
+            appointments = await Promise.all(rawAppointments.map(async (apt) => {
+                if (!apt.patient) return null; // Skip if patient User deleted
+
+                const patientProfile = await Patient.findOne({ user: apt.patient._id });
+                return {
+                    ...apt,
+                    patient: {
+                        ...apt.patient,
+                        profile: patientProfile ? patientProfile.profile : {}
+                    }
+                };
+            }));
+
+            // Filter nulls
+            appointments = appointments.filter(a => a !== null);
+
+            // 3. Sorting (Priority Algorithm)
             const getPriorityScore = (apt) => {
                 let score = 0;
                 if (apt.visitType === 'Urgent') score += 50;
@@ -22,21 +64,46 @@ router.get('/', auth, async (req, res) => {
                 return score;
             };
 
-            appointments = rawAppointments.sort((a, b) => {
+            appointments.sort((a, b) => {
                 const scoreA = getPriorityScore(a);
                 const scoreB = getPriorityScore(b);
-
-                // 1. Higher Score First
                 if (scoreB !== scoreA) return scoreB - scoreA;
-
-                // 2. Earlier Date First (FCFS within same priority)
                 return new Date(a.date) - new Date(b.date);
             });
+
         } else {
-            appointments = await Appointment.find({ patient: req.user.id })
-                .populate('doctor', 'name specialization')
-                .sort({ date: 1 });
+            // Patient View
+            console.log('[DEBUG] Patient fetching appointments. ID:', req.user.id);
+            const rawAppointments = await Appointment.find({ patient: req.user.id })
+                .sort({ date: 1 })
+                .lean();
+            console.log('[DEBUG] Raw Appointments Found:', rawAppointments.length);
+
+            // Hydrate with Doctor User details AND Profile
+            appointments = await Promise.all(rawAppointments.map(async (apt) => {
+                // Manual Fetch to guarantee data
+                const doctorUser = await User.findById(apt.doctor);
+                if (!doctorUser) console.log('[DEBUG] Doctor User NOT FOUND for ID:', apt.doctor);
+
+                const doctorProfile = await Doctor.findOne({ user: apt.doctor });
+
+                if (!doctorUser) return null; // Skip if user deleted
+
+                return {
+                    ...apt,
+                    doctor: {
+                        _id: doctorUser._id,
+                        name: doctorUser.name,
+                        email: doctorUser.email,
+                        specialization: doctorProfile ? doctorProfile.specialization : 'General',
+                        hospitalName: doctorProfile ? doctorProfile.hospitalName : ''
+                    }
+                };
+            }));
+
+            appointments = appointments.filter(a => a !== null);
         }
+
         res.json(appointments);
     } catch (err) {
         console.error(err.message);
@@ -96,22 +163,51 @@ router.post('/', auth, async (req, res) => {
 
         const appointment = await newAppointment.save();
 
-        // 4. Send Confirmation Email
-        const userEmail = req.user.email; // Assuming user is populated or we have it in req.user
-        // Note: req.user usually contains id, role. If we used verifyToken middleware that only encoded id/role, we might need to fetch user.
-        // But let's assume req.user has email or we mock it for now.
-        // Actually, let's fetch the patient email properly if needed, but standard auth middleware often attaches full user or we can findById.
-        // For simplicity/mock, we'll log to a placeholder email or use the one from request if available. 
-        // Better: let's fetch user or assume 'req.user.email' if auth middleware puts it there. 
-        // Standard JWT usually has id. Let's rely on the console log for now.
+        // 4. Generate Bill (Invoice) - Marked as PAID since it comes from Payment Gateway
+        const Bill = require('../models/Bill');
+        const Notification = require('../models/Notification'); // Ensure this model exists
 
+        let visitCost = 500;
+        if (visitType === 'Consultation') visitCost = 1000;
+        if (visitType === 'Urgent') visitCost = 1500;
+
+        const newBill = new Bill({
+            patient: req.user.id,
+            doctor: doctorId,
+            appointment: appointment._id,
+            amount: visitCost,
+            description: `Consultation Fee - ${visitType}`,
+            status: 'paid', // Assuming frontend payment success
+            date: new Date()
+        });
+        await newBill.save();
+
+        // 5. Create System Notifications
+        // Notify Patient
+        await new Notification({
+            user: req.user.id,
+            type: 'appointment',
+            message: `Appointment confirmed with Dr. (ID: ${doctorId}) for ${new Date(date).toLocaleString()}`,
+            data: { appointmentId: appointment._id }
+        }).save();
+
+        // Notify Doctor
+        await new Notification({
+            user: doctorId,
+            type: 'appointment',
+            message: `New Appointment: Patient ${req.user.name || 'Unknown'} for ${new Date(date).toLocaleString()}`,
+            data: { appointmentId: appointment._id }
+        }).save();
+
+        // 6. Send Confirmation Email
+        // ... (Send Email Logic)
         sendEmail(
-            'patient@example.com', // Mock, or fetch from DB
+            'patient@example.com',
             'Appointment Confirmed!',
-            `Your appointment with Doctor is confirmed for ${new Date(date).toLocaleString()}. Token: #${newAppointment.queueNumber}`
+            `Your appointment is confirmed. Invoice #${newBill._id} generated.`
         );
 
-        res.json(appointment);
+        res.json({ appointment, bill: newBill });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');

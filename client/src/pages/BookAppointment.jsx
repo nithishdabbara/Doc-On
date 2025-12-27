@@ -29,18 +29,20 @@ const BookAppointment = () => {
     const navigate = useNavigate();
 
     const [selectedCity, setSelectedCity] = useState('');
+    const [searchQuery, setSearchQuery] = useState(''); // New State for Symptom/Name
     const [showPayment, setShowPayment] = useState(false);
 
     // Dynamic Fee Logic
     const [consultationFee, setConsultationFee] = useState(500);
 
+    // ... (Fee logic unrelated) ...
     useEffect(() => {
         switch (formData.visitType) {
             case 'General Checkup':
             case 'Follow-up':
                 setConsultationFee(500);
                 break;
-            case 'Consultation': // Video/Telemedicine
+            case 'Consultation':
                 setConsultationFee(1000);
                 break;
             case 'Urgent':
@@ -54,11 +56,13 @@ const BookAppointment = () => {
     // Fetch Doctors with Smart Search
     useEffect(() => {
         const fetchDoctors = async () => {
+            setLoading(true);
             try {
                 // Pass specialty & city to API for scoring
                 let query = '?';
                 if (urlSpecialty) query += `specialty=${urlSpecialty}&`;
                 if (selectedCity) query += `city=${selectedCity}&`;
+                if (searchQuery) query += `search=${searchQuery}&`; // Pass Search param
 
                 const res = await api.get(`/users/doctors${query}`);
                 setDoctors(res.data);
@@ -69,8 +73,29 @@ const BookAppointment = () => {
                 setLoading(false);
             }
         };
-        fetchDoctors();
-    }, [urlSpecialty, selectedCity]); // Re-fetch when city changes
+        // Debounce search
+        const timeoutId = setTimeout(() => {
+            fetchDoctors();
+        }, 500);
+
+        return () => clearTimeout(timeoutId);
+    }, [urlSpecialty, selectedCity, searchQuery]);
+
+
+    // Auto-detect location from Profile (Mock "Near Me")
+    const handleUseMyLocation = () => {
+        // In a real app, use navigator.geolocation and reverse geocode
+        // For now, we assume the backend has the user's address. 
+        // But to show it in the UI, we can try to load user profile or just clear city 
+        // so backend sorts by nearest (which we implemented).
+
+        // Let's just CLEAR the city filter so backend logic takes over for "Nearest to Me" sorting
+        // OR if we want to be explicit, specific "My City" if we had access to user context here easily.
+        // Since we don't have 'user' object in props, let's just clear city and let backend sort.
+        // Better: Let's prompt "Using location..." and clear the field.
+        setSelectedCity('');
+        alert('Using your profile address to find nearest doctors!');
+    };
 
     const onChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -79,19 +104,19 @@ const BookAppointment = () => {
         setShowPayment(true);
     };
 
+    // ... (Payment logic) ...
     const handlePaymentSuccess = async () => {
         setShowPayment(false);
         try {
-            await api.post('/appointments', formData);
-            // Optionally create an invoice record here or let backend do it
-            navigate('/dashboard');
+            const res = await api.post('/appointments', formData);
+            // Navigate to Success Page with Data
+            navigate('/booking-success', { state: res.data });
         } catch (err) {
             console.error(err);
             setError(err.response?.data?.msg || 'Failed to book appointment');
         }
     };
 
-    // ...
 
     return (
         <div className="max-w-xl mx-auto mt-10 p-6 bg-white rounded-lg shadow">
@@ -107,16 +132,39 @@ const BookAppointment = () => {
             )}
 
             <form onSubmit={handleBookClick}>
-                {/* Filter by Location */}
-                <div className="mb-4">
-                    <label className="block text-gray-700 mb-2">Filter by City (Optional)</label>
-                    <input
-                        type="text"
-                        placeholder="Type city name (e.g. Mumbai)"
-                        value={selectedCity}
-                        onChange={(e) => setSelectedCity(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded"
-                    />
+
+                {/* Search Inputs */}
+                <div className="grid grid-cols-1 gap-4 mb-4">
+                    <div>
+                        <label className="block text-gray-700 mb-2 font-semibold">🔍 Find Doctor</label>
+                        <input
+                            type="text"
+                            placeholder="Search by 'Fever', 'Bone', or Doctor Name..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full p-2 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                    </div>
+
+                    <div>
+                        <div className="flex justify-between items-center mb-2">
+                            <label className="block text-gray-700">📍 Location</label>
+                            <button
+                                type="button"
+                                onClick={handleUseMyLocation}
+                                className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                            >
+                                🎯 Use My Location
+                            </button>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="City (e.g. Mumbai)"
+                            value={selectedCity}
+                            onChange={(e) => setSelectedCity(e.target.value)}
+                            className="w-full p-2 border border-gray-300 rounded"
+                        />
+                    </div>
                 </div>
 
                 <div className="mb-4">

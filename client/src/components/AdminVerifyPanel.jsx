@@ -94,7 +94,7 @@ const AdminVerifyPanel = () => {
                                     <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
                                         {doc.licenseProof ? (
                                             <a
-                                                href={`http://localhost:5000${doc.licenseProof}`}
+                                                href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${doc.licenseProof}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="text-blue-600 hover:underline flex items-center gap-1"

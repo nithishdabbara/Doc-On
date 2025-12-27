@@ -3,6 +3,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const User = require('../models/User');
 const Invoice = require('../models/Invoice');
+const Doctor = require('../models/Doctor');
 const Transaction = require('../models/Transaction');
 
 // @route   POST api/payments/create-invoice
@@ -81,7 +82,7 @@ router.post('/pay-invoice', auth, async (req, res) => {
             const doctorShare = invoice.amount - adminShare;
 
             // 3. Credit Doctor's Wallet
-            await User.findByIdAndUpdate(invoice.doctor, {
+            await Doctor.findOneAndUpdate({ user: invoice.doctor }, {
                 $inc: { walletBalance: doctorShare }
             });
 

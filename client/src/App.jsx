@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import BookAppointment from './pages/BookAppointment';
+import BookingSuccess from './pages/BookingSuccess';
 import Messages from './pages/Messages';
 import Settings from './pages/Settings';
 import Navbar from './components/Navbar';
@@ -36,6 +37,14 @@ function App() {
                 element={
                   <PrivateRoute>
                     <BookAppointment />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/booking-success"
+                element={
+                  <PrivateRoute>
+                    <BookingSuccess />
                   </PrivateRoute>
                 }
               />
