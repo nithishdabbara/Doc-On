@@ -30,6 +30,11 @@ app.get('/', (req, res) => {
     res.send('DocOn API Running');
 });
 
+// Health Check (For Render monitoring)
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', serverTime: new Date().toISOString() });
+});
+
 // Import Routes
 const authRoutes = require('./routes/authRoutes');
 const doctorRoutes = require('./routes/doctorRoutes');
