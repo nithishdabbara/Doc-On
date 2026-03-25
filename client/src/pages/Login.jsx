@@ -102,7 +102,8 @@ const Login = () => {
             completeLogin(res.data);
         } catch (err) {
             console.error("Google Login Error", err);
-            alert('Google Login Failed: ' + (err.response?.data?.message || 'Unknown Error'));
+            const msg = err.response?.data?.message || (err.code === 'ERR_NETWORK' ? 'Backend Connection Failed (502). Please check if Render is sleeping.' : 'Unknown Error');
+            alert('Google Login Failed: ' + msg);
         }
     };
 
