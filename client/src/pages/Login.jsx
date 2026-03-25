@@ -188,11 +188,7 @@ const Login = () => {
                             </div>
 
                             <div className="flex-center">
-                                <GoogleLogin
-                                    onSuccess={handleGoogleSuccess}
-                                    onError={() => alert('Login Failed')}
-                                    ux_mode="redirect"
-                                />
+                                <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => alert('Login Failed')} />
                             </div>
 
                             <p className="signup-link">
