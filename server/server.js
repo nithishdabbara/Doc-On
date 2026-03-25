@@ -49,17 +49,19 @@ app.use('/api/doctors', doctorRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/ai', aiRoutes);
-app.use('/api/records', recordRoutes);
-app.use('/api/labs', require('./routes/labRoutes'));
-app.use('/api/admin/analytics', require('./routes/analyticsRoutes')); // Phase 1 Advanced AI
-app.use('/api/ocr', require('./routes/ocrRoutes')); // Phase 2 Advanced AI
-app.use('/api/admin/risk', require('./routes/riskRoutes')); // Phase 3 Advanced AI
+// app.use('/api/records', recordRoutes);
+// app.use('/api/labs', require('./routes/labRoutes'));
+// app.use('/api/admin/analytics', require('./routes/analyticsRoutes')); // Phase 1 Advanced AI
+// app.use('/api/ocr', require('./routes/ocrRoutes')); // Phase 2 Advanced AI
+// app.use('/api/admin/risk', require('./routes/riskRoutes')); // Phase 3 Advanced AI
 app.use('/api/upload', require('./routes/uploadRoutes'));
-app.use('/api/chat', require('./routes/chatRoutes'));
+// app.use('/api/chat', require('./routes/chatRoutes'));
 
 // Serve Uploads Static Folder
 app.use('/uploads', express.static('uploads'));
 
+// Socket.io (Disabled for Production Stability on Free Tier)
+/*
 const http = require('http');
 const { Server } = require('socket.io');
 
@@ -115,7 +117,8 @@ io.on('connection', (socket) => {
         // console.log("User Disconnected", socket.id);
     });
 });
+*/
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => console.log(`Server running on port ${PORT} [Socket.io Enabled]`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT} [Basic Mode]`));
