@@ -1,0 +1,30 @@
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+const path = require('path');
+
+dotenv.config({ path: path.join(__dirname, '../.env') });
+
+const Patient = require('../models/Patient');
+
+const checkPatientDates = async () => {
+    try {
+        await mongoose.connect(process.env.MONGO_URI);
+        const patients = await Patient.find({});
+        console.log(`Found ${patients.length} patients.`);
+
+        patients.forEach(p => {
+            console.log(`Patient: ${p.name}`);
+            console.log(` - _id: ${p._id}`);
+            console.log(` - createdAt: ${p.createdAt}`);
+            console.log(` - updatedAt: ${p.updatedAt}`);
+            console.log('-------------------');
+        });
+
+        process.exit(0);
+    } catch (err) {
+        console.error(err);
+        process.exit(1);
+    }
+};
+
+checkPatientDates();

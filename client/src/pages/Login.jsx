@@ -1,155 +1,247 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useState } from 'react';
+import axios from 'axios';
+import { useNavigate, Link } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
+import { Shield, Stethoscope, Activity, ArrowRight, Lock } from 'lucide-react';
 
 const Login = () => {
-    const [formData, setFormData] = useState({
-        email: '',
-        password: ''
-    });
-    const [error, setError] = useState('');
-    const { login, loadUser, isAuthenticated, loading } = useAuth(); // Destructure loading
     const navigate = useNavigate();
+    const [step, setStep] = useState('credentials'); // credentials | otp
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [otp, setOtp] = useState('');
+    const [tempAuth, setTempAuth] = useState(null); // { userId, type }
 
-    // Handle Google Login Callback
-    useEffect(() => {
-        const handleGoogleLogin = async () => {
-            const queryParams = new URLSearchParams(window.location.search);
-            const token = queryParams.get('token');
-            if (token) {
-                localStorage.setItem('token', token);
-                try {
-                    await loadUser(); // Update Context State
-                    // No need to navigate() here; the effect will re-run, 
-                    // isAuthenticated becomes true, and the check above handles redirect.
-                } catch (err) {
-                    console.error("Google Auth Error:", err);
-                    setError('Google Login Verification Failed');
-                }
-            }
-        };
-        handleGoogleLogin();
-    }, [loadUser]);
-
-    const { email, password } = formData;
-
-    const onChange = e => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
-    const onSubmit = async e => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        setError('');
         try {
-            await login(formData);
-            navigate('/dashboard');
+            // Check for existing Trust Token
+            let trustToken = localStorage.getItem('trustDeviceToken');
+            if (trustToken === 'undefined' || trustToken === 'null') trustToken = null;
+
+            const res = await axios.post('/api/auth/login', {
+                email,
+                password,
+                trustDeviceToken: trustToken
+            });
+
+            // Check if 2FA is required
+            if (res.data.status === '2fa_required') {
+                setTempAuth({ userId: res.data.userId, type: res.data.type });
+                setStep('otp');
+                // You can show a toast here: "OTP sent to your email"
+                return;
+            }
+
+            // Direct Login (Admin or if 2FA is disabled OR Trusted Device)
+            // If API returns trust token (refresh), update it
+            if (res.data.trustDeviceToken) {
+                localStorage.setItem('trustDeviceToken', res.data.trustDeviceToken);
+            }
+            completeLogin(res.data);
+
         } catch (err) {
-            setError(err.msg || 'Login failed');
+            alert('Login Failed: ' + (err.response?.data?.message || err.message));
         }
     };
 
-    // 1. Loading State (Prevents Flicker/Crash)
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-        );
-    }
+    const handleVerifyOtp = async (e) => {
+        e.preventDefault();
+        try {
+            const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/auth/verify-login-otp`, {
+                userId: tempAuth.userId,
+                type: tempAuth.type,
+                otp
+            });
 
-    // 2. Redirect if already logged in (Declarative)
-    if (isAuthenticated) {
-        return <Navigate to="/dashboard" />;
-    }
+            // Save Trust Token if provided
+            if (res.data.trustDeviceToken) {
+                localStorage.setItem('trustDeviceToken', res.data.trustDeviceToken);
+            }
+
+            completeLogin(res.data);
+        } catch (err) {
+            alert('Verification Failed: ' + (err.response?.data?.message || 'Invalid OTP'));
+        }
+    };
+
+    const completeLogin = (data) => {
+        sessionStorage.setItem('token', data.token);
+        sessionStorage.setItem('user', JSON.stringify(data.user));
+
+        const type = data.user.type;
+        if (type === 'admin') {
+            sessionStorage.setItem('adminToken', data.token);
+            navigate('/admin/dashboard');
+        }
+        else if (type === 'doctor') navigate('/doctor/dashboard');
+        else navigate('/patient/dashboard');
+    };
+
+    const handleGoogleSuccess = async (credentialResponse) => {
+        try {
+            const trustToken = localStorage.getItem('trustDeviceToken');
+            const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/auth/google`, {
+                token: credentialResponse.credential,
+                trustDeviceToken: trustToken
+            });
+
+            // Handle 2FA for Patients
+            if (res.data.status === '2fa_required') {
+                setTempAuth({ userId: res.data.userId, type: res.data.type });
+                setStep('otp');
+                // Optional: Toast "OTP sent to your Google email"
+                return;
+            }
+
+            if (res.data.trustDeviceToken) {
+                localStorage.setItem('trustDeviceToken', res.data.trustDeviceToken);
+            }
+            completeLogin(res.data);
+        } catch (err) {
+            console.error("Google Login Error", err);
+            alert('Google Login Failed: ' + (err.response?.data?.message || 'Unknown Error'));
+        }
+    };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="flex w-full max-w-6xl shadow-2xl rounded-2xl overflow-hidden bg-white min-h-[600px]">
-
-                {/* LEFT SIDE: Form Section */}
-                <div className="w-full md:w-1/2 p-10 flex flex-col justify-center relative">
-                    <div className="mb-10 text-center">
-                        <h1 className="text-3xl font-bold text-gray-800 mb-2">Welcome Back</h1>
-                        <p className="text-gray-500">Access your digital health dashboard</p>
+        <div className="login-container">
+            {/* Left Panel - Feature Section */}
+            <div className="marketing-side">
+                <div className="content-wrapper">
+                    <div className="brand-header animate-fade-in">
+                        <Stethoscope size={40} className="brand-icon" />
+                        <h1>DocOn</h1>
                     </div>
 
-                    {error && <div className="bg-red-50 text-red-700 p-3 rounded-lg mb-6 text-sm border border-red-100 flex items-center gap-2">⚠️ {error}</div>}
+                    <h2 className="tagline">Your Complete<br />Healthcare Ecosystem</h2>
 
-                    {/* Google Sign In Button */}
-                    <div className="mb-6">
-                        <a
-                            href="http://localhost:5000/api/auth/google"
-                            className="w-full flex items-center justify-center gap-3 bg-white border border-gray-200 text-gray-700 py-3 rounded-xl hover:bg-gray-50 transition card-hover font-semibold shadow-sm"
-                        >
-                            <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
-                            Sign in with Google
-                        </a>
-                        <div className="relative mt-8">
-                            <div className="absolute inset-0 flex items-center">
-                                <span className="w-full border-t border-gray-100" />
-                            </div>
-                            <div className="relative flex justify-center text-xs uppercase tracking-widest text-gray-400 font-bold">
-                                <span className="bg-white px-2">Or with email</span>
+                    <div className="features-list">
+                        <div className="feature-item">
+                            <div className="icon-box"><Activity size={24} /></div>
+                            <div>
+                                <h3>Expert Care</h3>
+                                <p>Book verified specialists instantly.</p>
                             </div>
                         </div>
-                    </div>
-
-                    <form onSubmit={onSubmit} className="space-y-5">
-                        <div className="group">
-                            <label className="block text-gray-700 text-sm font-bold mb-2 ml-1">Email Address</label>
-                            <input
-                                type="email"
-                                name="email"
-                                value={email}
-                                onChange={onChange}
-                                placeholder="name@example.com"
-                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-indigo-500 transition-all font-medium"
-                                required
-                            />
-                        </div>
-                        <div className="group">
-                            <label className="block text-gray-700 text-sm font-bold mb-2 ml-1">Password</label>
-                            <input
-                                type="password"
-                                name="password"
-                                value={password}
-                                onChange={onChange}
-                                placeholder="••••••••"
-                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-indigo-500 transition-all font-medium"
-                                required
-                            />
-                        </div>
-                        <button type="submit" className="w-full bg-indigo-600 text-white py-3.5 rounded-xl hover:bg-indigo-700 transition font-bold shadow-lg shadow-indigo-200 active:scale-[0.98]">
-                            Secure Login
-                        </button>
-                    </form>
-
-                    <p className="mt-8 text-center text-sm text-gray-500">
-                        New to DocOn? <a href="/register" className="text-indigo-600 font-bold hover:underline">Create Account</a>
-                    </p>
-                </div>
-
-                {/* RIGHT SIDE: Hero Image */}
-                <div className="hidden md:block w-1/2 bg-cover bg-center relative" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80')" }}>
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/90 to-blue-900/80 flex flex-col justify-end p-12 text-white">
-                        <h2 className="text-4xl font-bold mb-4 leading-tight">Your Health,<br />Simplified.</h2>
-                        <p className="text-blue-100 text-lg mb-8 opacity-90">Manage appointments, bills, and medical records in one secure portal.</p>
-
-                        {/* Trust Badges */}
-                        <div className="flex gap-4 opacity-70">
-                            <div className="flex items-center gap-1 text-xs font-mono border px-2 py-1 rounded border-white/30">
-                                🔒 256-bit Encryption
-                            </div>
-                            <div className="flex items-center gap-1 text-xs font-mono border px-2 py-1 rounded border-white/30">
-                                🏥 Verified Doctors
+                        <div className="feature-item">
+                            <div className="icon-box"><Shield size={24} /></div>
+                            <div>
+                                <h3>Secure Records</h3>
+                                <p>Bank-grade encryption for your data.</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
+                {/* Decorative Pattern */}
+                <div className="blob blob-1"></div>
+                <div className="blob blob-2"></div>
+            </div>
+
+            {/* Right Panel - Login Form */}
+            <div className="login-side">
+                <div className="login-box animate-fade-up">
+
+                    {step === 'credentials' && (
+                        <>
+                            <div className="text-center mb-8">
+                                <h2 className="text-2xl">Welcome Back</h2>
+                                <p className="text-gray">Log in to manage your health journey</p>
+                            </div>
+
+                            <form onSubmit={handleLogin} className="login-form">
+                                <div className="form-group">
+                                    <label>Email or Username</label>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        placeholder="name@example.com"
+                                        value={email}
+                                        onChange={e => setEmail(e.target.value)}
+                                        required
+                                        autoComplete="off"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Password</label>
+                                    <input
+                                        type="password"
+                                        className="input-field"
+                                        placeholder="••••••••"
+                                        value={password}
+                                        onChange={e => setPassword(e.target.value)}
+                                        required
+                                        autoComplete="new-password"
+                                    />
+                                </div>
+
+                                <button type="submit" className="btn btn-primary w-full">
+                                    Log In <ArrowRight size={18} />
+                                </button>
+                            </form>
+
+                            <div className="divider">
+                                <span className="divider-text">Or continue with</span>
+                            </div>
+
+                            <div className="flex-center">
+                                <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => alert('Login Failed')} />
+                            </div>
+
+                            <p className="signup-link">
+                                Don't have an account? <Link to="/patient/signup">Sign up as Patient</Link>
+                                <span className="separator">|</span>
+                                <Link to="/doctor/signup">Join as Doctor</Link>
+                            </p>
+                            <div className="mt-4 text-center space-y-2">
+                                <a href="/lab/login" className="text-xs font-bold text-teal-600 hover:text-teal-800 flex items-center justify-center gap-1">
+                                    <Activity size={14} /> Lab Partner Login
+                                </a>
+                            </div>
+                        </>
+                    )}
+
+                    {step === 'otp' && (
+                        <>
+                            <div className="text-center mb-6">
+                                <div className="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600">
+                                    <Lock size={32} />
+                                </div>
+                                <h2 className="text-2xl font-bold">Security Check</h2>
+                                <p className="text-gray text-sm">Enter the OTP sent to your email</p>
+                            </div>
+
+                            <form onSubmit={handleVerifyOtp} className="login-form">
+                                <input
+                                    type="text"
+                                    className="input-field text-center text-3xl font-mono tracking-widest"
+                                    placeholder="0 0 0 0 0 0"
+                                    maxLength={6}
+                                    value={otp}
+                                    onChange={e => setOtp(e.target.value)}
+                                    required
+                                    autoFocus
+                                />
+                                <button type="submit" className="btn btn-primary w-full mt-4">
+                                    Verify & Login
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setStep('credentials')}
+                                    className="btn btn-secondary w-full mt-2"
+                                >
+                                    Cancel
+                                </button>
+                            </form>
+                        </>
+                    )}
+
+                </div>
             </div>
         </div>
     );
 };
 
 export default Login;
+

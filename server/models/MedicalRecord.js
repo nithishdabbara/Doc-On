@@ -1,32 +1,15 @@
 const mongoose = require('mongoose');
 
-const MedicalRecordSchema = new mongoose.Schema({
-    patient: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'user',
-        required: true
-    },
-    doctor: {
-        type: mongoose.Schema.Types.ObjectId, // Optional, if uploaded by a doctor
-        ref: 'user'
-    },
-    title: {
-        type: String,
-        required: true
-    },
-    type: {
-        type: String,
-        enum: ['Report', 'Prescription', 'X-Ray', 'Other'],
-        default: 'Report'
-    },
-    fileUrl: {
-        type: String,
-        required: true
-    },
-    date: {
-        type: Date,
-        default: Date.now
-    }
+const medicalRecordSchema = new mongoose.Schema({
+    patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
+    uploadedBy: { type: String, enum: ['patient', 'doctor'], required: true },
+    doctorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' }, // Track creator for History Access Rules
+    type: { type: String, enum: ['prescription', 'xray', 'report', 'history'], required: true },
+    title: { type: String, required: true },
+    description: { type: String }, // For extracted OCR text or notes
+    fileUrl: { type: String, required: true },
+    date: { type: Date, default: Date.now },
+    accessList: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' }] // Doctors who can see this
 });
 
-module.exports = mongoose.model('medicalRecord', MedicalRecordSchema);
+module.exports = mongoose.model('MedicalRecord', medicalRecordSchema);

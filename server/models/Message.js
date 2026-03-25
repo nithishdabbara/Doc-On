@@ -1,31 +1,13 @@
 const mongoose = require('mongoose');
 
-const MessageSchema = new mongoose.Schema({
-    sender: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
-    recipient: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
-    content: {
-        type: String,
-        required: true
-    },
-    attachment: {
-        type: String // URL/Path to image
-    },
-    read: {
-        type: Boolean,
-        default: false
-    },
-    date: {
-        type: Date,
-        default: Date.now
-    }
-}, { timestamps: true });
+const messageSchema = new mongoose.Schema({
+    roomId: { type: String, require: true }, // Usually Appointment ID or unique pair ID
+    senderId: { type: String, required: true },
+    senderRole: { type: String, enum: ['doctor', 'patient', 'admin'], required: true },
+    receiverId: { type: String, required: true },
+    receiverRole: { type: String, enum: ['doctor', 'patient', 'admin'], required: true },
+    message: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now }
+});
 
-module.exports = mongoose.model('Message', MessageSchema);
+module.exports = mongoose.model('Message', messageSchema);

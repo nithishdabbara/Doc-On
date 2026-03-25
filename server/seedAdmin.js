@@ -1,36 +1,32 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const User = require('./models/User');
-require('dotenv').config();
+const dotenv = require('dotenv');
+const Admin = require('./models/Admin');
 
-const seedAdmin = async () => {
-    try {
-        await mongoose.connect(process.env.MONGO_URI);
-        console.log('MongoDB Connected');
+dotenv.config();
 
-        let admin = await User.findOne({ email: 'admin@healthportal.com' });
-        if (admin) {
+mongoose.connect(process.env.MONGO_URI)
+    .then(async () => {
+        console.log('Connected to MongoDB');
+
+        // Check if admin exists
+        const existing = await Admin.findOne({ username: 'admin' });
+        if (existing) {
             console.log('Admin already exists');
             process.exit();
         }
 
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash('admin123', salt);
-
-        admin = new User({
-            name: 'Super Admin',
-            email: 'admin@healthportal.com',
-            password: hashedPassword,
-            role: 'admin'
+        const hashedPassword = await bcrypt.hash('admin123', 10);
+        const newAdmin = new Admin({
+            username: 'admin',
+            password: hashedPassword
         });
 
-        await admin.save();
-        console.log('Admin user created: admin@healthportal.com / admin123');
+        await newAdmin.save();
+        console.log('Admin seeded successfully: admin / admin123');
         process.exit();
-    } catch (err) {
+    })
+    .catch(err => {
         console.error(err);
         process.exit(1);
-    }
-};
-
-seedAdmin();
+    });
