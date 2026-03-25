@@ -86,6 +86,8 @@ const Login = () => {
                 trustDeviceToken: trustToken
             });
 
+            console.log("Google Login Backend Response:", res.data);
+
             // Handle 2FA for Patients
             if (res.data.status === '2fa_required') {
                 setTempAuth({ userId: res.data.userId, type: res.data.type });
