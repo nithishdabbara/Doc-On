@@ -17,13 +17,6 @@ app.use(express.json());
 // Payment Routes (Razorpay)
 app.use('/api/payment', require('./routes/paymentRoutes'));
 
-// Google OAuth requirement
-app.use((req, res, next) => {
-    res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
-    res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
-    next();
-});
-
 // Database Connection
 mongoose.connect(process.env.MONGODB_URI)
     .then(() => console.log('MongoDB Connected'))
