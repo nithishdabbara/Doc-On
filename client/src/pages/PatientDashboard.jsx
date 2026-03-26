@@ -498,6 +498,17 @@ const PatientDashboard = () => {
 
                                                     {/* Actions */}
                                                     <div className="flex gap-2 mt-3">
+                                                        {apt.paymentId && (
+                                                            <a
+                                                                href={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/patients/appointments/${apt._id}/invoice`}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="px-3 py-2 bg-teal-50 hover:bg-teal-100 text-teal-600 border border-teal-200 text-xs font-bold rounded-lg flex items-center gap-1 transition-colors"
+                                                            >
+                                                                <Download size={14} /> Receipt
+                                                            </a>
+                                                        )}
                                                         {apt.type === 'video' && apt.status === 'scheduled' && apt.meetingLink && (
                                                             <button
                                                                 onClick={async (e) => {

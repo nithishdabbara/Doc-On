@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Clock, Map, MoreHorizontal, TestTube, FlaskConical, Bot, BrainCircuit, Activity, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, Map, MoreHorizontal, TestTube, FlaskConical, Bot, BrainCircuit, Activity, ChevronRight, Download } from 'lucide-react';
 
 const PremiumDashboardTab = ({ user, appointments, navigate, setActiveTab }) => {
     // Get the next upcoming appointment
@@ -68,6 +68,16 @@ const PremiumDashboardTab = ({ user, appointments, navigate, setActiveTab }) => 
                                     >
                                         Manage Appointment
                                     </button>
+                                    {nextAppt.paymentId && (
+                                        <a
+                                            href={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/patients/appointments/${nextAppt._id}/invoice`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="py-3 px-6 bg-teal-50 text-teal-600 font-bold rounded-xl border border-teal-200 hover:bg-teal-100 transition-all flex items-center gap-2"
+                                        >
+                                            <Download size={18} /> Receipt
+                                        </a>
+                                    )}
                                 </>
                             ) : (
                                 <button 
