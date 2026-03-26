@@ -349,6 +349,24 @@ router.get('/appointments/:patientName', async (req, res) => {
     }
 });
 
+// ROBUST: Get Appointments by Physical ID (Prevents name mismatch issues)
+router.get('/appointments-by-id/:patientId', verifyToken, async (req, res) => {
+    try {
+        const { patientId } = req.params;
+        
+        // Security Check: Only allow patients to fetch their own data or doctors to fetch patient data
+        if (req.user.type === 'patient' && req.user.id !== patientId) {
+            return res.status(403).json({ message: "Access Denied: Cannot fetch other patient's records." });
+        }
+
+        const appointments = await Appointment.find({ patientId }).populate('doctorId', 'name specialization address phone email consultationFee');
+        res.json(appointments);
+    } catch (err) {
+        console.error("Fetch by ID Error:", err);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
 // -------------------------------------------------------------------------
 // SPECIFIC ROUTES (Must come BEFORE /:id wildcards)
 // -------------------------------------------------------------------------

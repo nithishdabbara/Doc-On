@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const MedicalRecord = require('../models/MedicalRecord');
 const { verifyToken } = require('../middleware/auth');
 

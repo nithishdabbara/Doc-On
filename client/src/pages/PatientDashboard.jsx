@@ -106,7 +106,9 @@ const PatientDashboard = () => {
         setLoadingAppts(true);
         try {
             const token = sessionStorage.getItem('token');
-            const resApt = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/patients/appointments/${user.name}`);
+            const resApt = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/patients/appointments-by-id/${user.id || user._id}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             setAppointments(resApt.data);
         } catch (err) {
             console.error(err);

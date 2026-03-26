@@ -214,7 +214,8 @@ const DoctorDashboard = () => {
                     formData.append('file', file);
                     formData.append('type', 'prescription');
                     formData.append('title', `Doc Upload - ${new Date().toLocaleDateString()}`);
-                    formData.append('patientId', treating.patientId);
+                    const pId = typeof treating.patientId === 'object' ? treating.patientId._id : treating.patientId;
+                    formData.append('patientId', pId);
 
                     const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/records/upload`, formData, {
                         headers: {
