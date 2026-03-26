@@ -29,7 +29,8 @@ const StatsCounter = () => {
         };
         fetchStats();
 
-        // 2. Real-Time Updates via Socket.io
+        // 2. Real-Time Updates via Socket.io (Disabled for Stability)
+        /*
         const socket = io(import.meta.env.VITE_API_URL || "http://localhost:5000");
 
         socket.on('stats_update', (data) => {
@@ -42,6 +43,7 @@ const StatsCounter = () => {
         });
 
         return () => socket.disconnect();
+        */
     }, []);
 
     return (

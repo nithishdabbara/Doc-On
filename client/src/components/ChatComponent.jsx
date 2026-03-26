@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
 
-const socket = io(import.meta.env.VITE_API_URL || "http://localhost:5000");
+// const socket = io(import.meta.env.VITE_API_URL || "http://localhost:5000");
+const socket = { emit: () => {}, on: () => {}, off: () => {} }; // Dummy to prevent crashes
 
 const ChatComponent = ({ roomId, senderId, senderRole, receiverId, receiverRole }) => {
     const [messages, setMessages] = useState([]);
