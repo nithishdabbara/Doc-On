@@ -33,7 +33,7 @@ const LabDashboard = () => {
             formData.append('report', file);
             formData.append('bookingId', selectedBooking._id);
             await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/labs/assistant/upload-report`, formData, {
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
             setReportFile(file);
             // Refresh bookings
@@ -194,7 +194,6 @@ const LabDashboard = () => {
             const token = sessionStorage.getItem('token');
             const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/labs/analyze-report`, formData, {
                 headers: {
-                    'Content-Type': 'multipart/form-data',
                     'Authorization': `Bearer ${token}`
                 }
             });

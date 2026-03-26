@@ -50,7 +50,7 @@ const DoctorProfile = () => {
 
                 // We use the record upload endpoint to create a proper medical record
                 const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/records/upload`, formData, {
-                    headers: { 'Content-Type': 'multipart/form-data', 'Authorization': `Bearer ${token}` }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
                 // recordRoutes returns { record: { fileUrl: 'filename' } }
                 // We construct the full path

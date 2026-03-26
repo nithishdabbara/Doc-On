@@ -217,8 +217,7 @@ const DoctorDashboard = () => {
 
                     const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/records/upload`, formData, {
                         headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'multipart/form-data'
+                            'Authorization': `Bearer ${token}`
                         }
                     });
                     uploadedUrls.push(`/uploads/${res.data.record.fileUrl}`);
@@ -428,7 +427,7 @@ const DoctorDashboard = () => {
 
                                                     // Updated Endpoint: Orchestrated AI
                                                     const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/doctors/analyze-document`, formData, {
-                                                        headers: { 'Content-Type': 'multipart/form-data', 'Authorization': `Bearer ${sessionStorage.getItem('token')}` }
+                                                        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('token')}` }
                                                     });
 
                                                     setAiResponse(res.data);
@@ -854,7 +853,6 @@ const DoctorDashboard = () => {
 
                                                         const res = await axios.post('/api/doctors/analyze-document', formData, {
                                                             headers: {
-                                                                'Content-Type': 'multipart/form-data',
                                                                 'Authorization': `Bearer ${sessionStorage.getItem('token')}`
                                                             }
                                                         });

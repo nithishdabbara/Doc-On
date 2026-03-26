@@ -1051,9 +1051,7 @@ const ProfileForm = ({ user, setUser }) => {
         formData.append('file', file);
 
         try {
-            const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/upload`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/upload`, formData);
             const fullUrl = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}${res.data.fileUrl}`;
             setFormData({ ...formData, profilePhoto: fullUrl });
         } catch (err) {
@@ -1348,8 +1346,7 @@ const DigitizeReportModal = ({ onClose, onUploadSuccess }) => {
             const token = sessionStorage.getItem('token');
             const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/ocr/extract`, formData, {
                 headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data'
+                    'Authorization': `Bearer ${token}`
                 }
             });
             setResult(res.data);
@@ -1377,8 +1374,7 @@ const DigitizeReportModal = ({ onClose, onUploadSuccess }) => {
             const token = sessionStorage.getItem('token');
             await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/records/upload`, formData, {
                 headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data'
+                    'Authorization': `Bearer ${token}`
                 }
             });
             alert('Record Saved Successfully!');

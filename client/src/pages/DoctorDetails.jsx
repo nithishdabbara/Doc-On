@@ -177,7 +177,7 @@ const DoctorDetails = () => {
 
                 // Use the CORRECT Medical Record Endpoint
                 const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/records/upload`, formData, {
-                    headers: { 'Content-Type': 'multipart/form-data', 'Authorization': `Bearer ${token}` }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
                 // Correctly construct URL from record response
                 uploadedUrls.push(`/uploads/${res.data.record.fileUrl}`);

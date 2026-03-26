@@ -124,7 +124,6 @@ const Chatbot = ({ isOpen, onClose, isEmbedded = false, initialMessage = '', ini
 
                 res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/ai/analyze`, formData, {
                     headers: {
-                        'Content-Type': 'multipart/form-data',
                         'Authorization': `Bearer ${sessionStorage.getItem('token')}`
                     }
                 });
