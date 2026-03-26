@@ -15,7 +15,21 @@ if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+// ✅ FIX: CORS with explicit config
+const allowedOrigins = [
+    'http://localhost:5173',
+    'https://doc-on-ten.vercel.app'
+];
+
 const app = express();
+const server = require('http').createServer(app);
+const io = require('socket.io')(server, {
+    cors: {
+        origin: allowedOrigins,
+        methods: ["GET", "POST"],
+        credentials: true
+    }
+});
 
 // ✅ FIX: COOP/COEP headers FIRST — before anything else
 app.use((req, res, next) => {
@@ -24,12 +38,6 @@ app.use((req, res, next) => {
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     next();
 });
-
-// ✅ FIX: CORS with explicit config
-const allowedOrigins = [
-    'http://localhost:5173',
-    'https://doc-on-ten.vercel.app'
-];
 
 app.use(cors({
     origin: function (origin, callback) {
@@ -51,6 +59,44 @@ app.use(express.json());
 
 // Serving static files (Uploads)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Socket.io Real-time Chat
+const Message = require('./models/Message');
+io.on('connection', (socket) => {
+    console.log('User Connected:', socket.id);
+
+    socket.on('join_room', (roomId) => {
+        socket.join(roomId);
+        console.log(`Socket ${socket.id} joined room ${roomId}`);
+    });
+
+    socket.on('send_message', async (data) => {
+        try {
+            const { roomId, senderId, senderRole, receiverId, receiverRole, message } = data;
+            
+            // Save to DB
+            const newMessage = new Message({
+                roomId,
+                senderId,
+                senderRole,
+                receiverId,
+                receiverRole,
+                message,
+                timestamp: new Date()
+            });
+            await newMessage.save();
+
+            // Broadcast to room
+            io.to(roomId).emit('receive_message', data);
+        } catch (err) {
+            console.error("Socket send_message error:", err);
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log('User Disconnected:', socket.id);
+    });
+});
 
 // Payment Routes (Razorpay)
 app.use('/api/payment', require('./routes/paymentRoutes'));
@@ -82,6 +128,7 @@ const aiRoutes = require('./routes/aiRoutes');
 const recordRoutes = require('./routes/recordRoutes');
 const labRoutes = require('./routes/labRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const chatRoutes = require('./routes/chatRoutes'); // Import chat routes
 
 // Enable Routes
 app.use('/api/auth', authRoutes);
@@ -92,6 +139,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/records', recordRoutes);
 app.use('/api/labs', labRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/chat', chatRoutes); // Enable chat routes
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {
@@ -100,6 +148,6 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT} [Basic Mode]`);
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT} [Real-time Chat Enabled]`);
 });
