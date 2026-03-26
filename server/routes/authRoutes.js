@@ -71,20 +71,16 @@ router.post('/login', async (req, res) => {
             return res.json({ token, user: userObj, trustDeviceToken });
         }
 
-        // Generate & Send OTP (Patients Only)
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        user.otp = otp;
-        user.otpExpires = Date.now() + 10 * 60 * 1000; // 10 mins
-        await user.save();
+        // OTP REMOVED: Directly Login
+        const token = jwt.sign({ id: user._id, type }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const userObj = user.toObject();
+        delete userObj.password;
+        userObj.type = type;
 
-        await sendOTP(user.email, otp);
+        // Generate Trust Token automatically
+        const trustDeviceToken = jwt.sign({ id: user._id.toString(), purpose: 'trusted_device' }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-        res.json({
-            status: '2fa_required',
-            userId: user._id,
-            email: user.email,
-            type: type
-        });
+        return res.json({ token, user: userObj, trustDeviceToken });
 
     } catch (err) {
         console.error(err);
@@ -173,46 +169,16 @@ router.post('/google', async (req, res) => {
             await user.save();
         }
 
-        // Logic: Patients -> OTP Required. Doctors -> Direct Login.
-        if (type === 'patient') {
-            // Check for Trusted Device Token
-            if (req.body.trustDeviceToken) {
-                try {
-                    const decoded = jwt.verify(req.body.trustDeviceToken, process.env.JWT_SECRET);
-                    if (decoded.id === user._id.toString() && decoded.purpose === 'trusted_device') {
-                        // Skip OTP
-                        const jwtToken = jwt.sign({ id: user._id, type }, process.env.JWT_SECRET, { expiresIn: '1h' });
-                        const userObj = user.toObject();
-                        delete userObj.password;
-                        if (userObj.otp) delete userObj.otp;
-                        return res.json({ token: jwtToken, user: { ...userObj, type }, trustDeviceToken: req.body.trustDeviceToken });
-                    }
-                } catch (ignore) { }
-            }
-
-            const otp = Math.floor(100000 + Math.random() * 900000).toString();
-            user.otp = otp;
-            user.otpExpires = Date.now() + 10 * 60 * 1000; // 10 mins
-            await user.save();
-
-            await sendOTP(user.email, otp);
-
-            return res.json({
-                status: '2fa_required',
-                userId: user._id,
-                email: user.email,
-                type: 'patient'
-            });
-        }
-
-        // Doctors / Admins -> Direct Login
+        // OTP REMOVED: Directly Login
         const jwtToken = jwt.sign({ id: user._id, type }, process.env.JWT_SECRET, { expiresIn: '1h' });
-
         const userObj = user.toObject();
         delete userObj.password;
-        if (userObj.otp) delete userObj.otp;
+        userObj.type = type;
 
-        res.json({ token: jwtToken, user: { ...userObj, type } });
+        // Generate Trust Token automatically
+        const trustDeviceToken = jwt.sign({ id: user._id.toString(), purpose: 'trusted_device' }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+        return res.json({ token: jwtToken, user: userObj, trustDeviceToken });
 
     } catch (err) {
         console.error('Google Auth Error:', err);

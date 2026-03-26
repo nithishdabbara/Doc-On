@@ -6,14 +6,13 @@ import { Shield, Stethoscope, Activity, ArrowRight, Lock } from 'lucide-react';
 
 const Login = () => {
     const navigate = useNavigate();
-    const [step, setStep] = useState('credentials'); // credentials | otp
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [otp, setOtp] = useState('');
-    const [tempAuth, setTempAuth] = useState(null); // { userId, type }
+    const [loading, setLoading] = useState(false);
 
     const handleLogin = async (e) => {
         e.preventDefault();
+        setLoading(true);
         try {
             // Check for existing Trust Token
             let trustToken = localStorage.getItem('trustDeviceToken');
@@ -25,60 +24,23 @@ const Login = () => {
                 trustDeviceToken: trustToken
             });
 
-            // Check if 2FA is required
-            if (res.data.status === '2fa_required') {
-                setTempAuth({ userId: res.data.userId, type: res.data.type });
-                setStep('otp');
-                // You can show a toast here: "OTP sent to your email"
-                return;
-            }
-
-            // Direct Login (Admin or if 2FA is disabled OR Trusted Device)
-            // If API returns trust token (refresh), update it
+            // Direct Login Success
             if (res.data.trustDeviceToken) {
                 localStorage.setItem('trustDeviceToken', res.data.trustDeviceToken);
             }
             completeLogin(res.data);
 
         } catch (err) {
-            alert('Login Failed: ' + (err.response?.data?.message || err.message));
+            console.error("Login Error", err);
+            const msg = err.response?.data?.message || (err.code === 'ERR_NETWORK' ? 'Backend Connection Failed. Please check if Render is sleeping.' : 'Invalid credentials');
+            alert('Login Failed: ' + msg);
+        } finally {
+            setLoading(false);
         }
-    };
-
-    const handleVerifyOtp = async (e) => {
-        e.preventDefault();
-        try {
-            const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/auth/verify-login-otp`, {
-                userId: tempAuth.userId,
-                type: tempAuth.type,
-                otp
-            });
-
-            // Save Trust Token if provided
-            if (res.data.trustDeviceToken) {
-                localStorage.setItem('trustDeviceToken', res.data.trustDeviceToken);
-            }
-
-            completeLogin(res.data);
-        } catch (err) {
-            alert('Verification Failed: ' + (err.response?.data?.message || 'Invalid OTP'));
-        }
-    };
-
-    const completeLogin = (data) => {
-        sessionStorage.setItem('token', data.token);
-        sessionStorage.setItem('user', JSON.stringify(data.user));
-
-        const type = data.user.type;
-        if (type === 'admin') {
-            sessionStorage.setItem('adminToken', data.token);
-            navigate('/admin/dashboard');
-        }
-        else if (type === 'doctor') navigate('/doctor/dashboard');
-        else navigate('/patient/dashboard');
     };
 
     const handleGoogleSuccess = async (credentialResponse) => {
+        setLoading(true);
         try {
             const trustToken = localStorage.getItem('trustDeviceToken');
             const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/auth/google`, {
@@ -88,23 +50,28 @@ const Login = () => {
 
             console.log("Google Login Backend Response:", res.data);
 
-            // Handle 2FA for Patients
-            if (res.data.status === '2fa_required') {
-                setTempAuth({ userId: res.data.userId, type: res.data.type });
-                setStep('otp');
-                // Optional: Toast "OTP sent to your Google email"
-                return;
-            }
-
             if (res.data.trustDeviceToken) {
                 localStorage.setItem('trustDeviceToken', res.data.trustDeviceToken);
             }
             completeLogin(res.data);
         } catch (err) {
             console.error("Google Login Error", err);
-            const msg = err.response?.data?.message || (err.code === 'ERR_NETWORK' ? 'Backend Connection Failed (502). Please check if Render is sleeping.' : 'Unknown Error');
+            const msg = err.response?.data?.message || (err.code === 'ERR_NETWORK' ? 'Backend Connection Failed. Please check if Render is sleeping.' : 'Unknown Error');
             alert('Google Login Failed: ' + msg);
+        } finally {
+            setLoading(false);
         }
+    };
+
+    const completeLogin = (data) => {
+        const { token, user } = data;
+        sessionStorage.setItem('token', token);
+        sessionStorage.setItem('user', JSON.stringify(user));
+
+        if (user.type === 'admin') navigate('/admin/dashboard');
+        else if (user.type === 'doctor') navigate('/doctor/dashboard');
+        else if (user.type === 'lab') navigate('/lab/dashboard');
+        else navigate('/patient/dashboard');
     };
 
     return (
@@ -145,101 +112,60 @@ const Login = () => {
             {/* Right Panel - Login Form */}
             <div className="login-side">
                 <div className="login-box animate-fade-up">
+                    <div className="text-center mb-8">
+                        <h2 className="text-2xl">Welcome Back</h2>
+                        <p className="text-gray">Log in to manage your health journey</p>
+                    </div>
 
-                    {step === 'credentials' && (
-                        <>
-                            <div className="text-center mb-8">
-                                <h2 className="text-2xl">Welcome Back</h2>
-                                <p className="text-gray">Log in to manage your health journey</p>
-                            </div>
+                    <form onSubmit={handleLogin} className="login-form">
+                        <div className="form-group">
+                            <label>Email or Username</label>
+                            <input
+                                type="text"
+                                className="input-field"
+                                placeholder="name@example.com"
+                                value={email}
+                                onChange={e => setEmail(e.target.value)}
+                                required
+                                autoComplete="off"
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>Password</label>
+                            <input
+                                type="password"
+                                className="input-field"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
+                                required
+                                autoComplete="new-password"
+                            />
+                        </div>
 
-                            <form onSubmit={handleLogin} className="login-form">
-                                <div className="form-group">
-                                    <label>Email or Username</label>
-                                    <input
-                                        type="text"
-                                        className="input-field"
-                                        placeholder="name@example.com"
-                                        value={email}
-                                        onChange={e => setEmail(e.target.value)}
-                                        required
-                                        autoComplete="off"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Password</label>
-                                    <input
-                                        type="password"
-                                        className="input-field"
-                                        placeholder="••••••••"
-                                        value={password}
-                                        onChange={e => setPassword(e.target.value)}
-                                        required
-                                        autoComplete="new-password"
-                                    />
-                                </div>
+                        <button type="submit" className="btn btn-primary w-full" disabled={loading}>
+                            {loading ? 'Logging in...' : 'Log In'} <ArrowRight size={18} />
+                        </button>
+                    </form>
 
-                                <button type="submit" className="btn btn-primary w-full">
-                                    Log In <ArrowRight size={18} />
-                                </button>
-                            </form>
+                    <div className="divider">
+                        <span className="divider-text">Or continue with</span>
+                    </div>
 
-                            <div className="divider">
-                                <span className="divider-text">Or continue with</span>
-                            </div>
+                    <div className="flex-center">
+                        <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => alert('Login Failed')} />
+                    </div>
 
-                            <div className="flex-center">
-                                <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => alert('Login Failed')} />
-                            </div>
-
-                            <p className="signup-link">
-                                Don't have an account? <Link to="/patient/signup">Sign up as Patient</Link>
-                                <span className="separator">|</span>
-                                <Link to="/doctor/signup">Join as Doctor</Link>
-                            </p>
-                            <div className="mt-4 text-center space-y-2">
-                                <a href="/lab/login" className="text-xs font-bold text-teal-600 hover:text-teal-800 flex items-center justify-center gap-1">
-                                    <Activity size={14} /> Lab Partner Login
-                                </a>
-                            </div>
-                        </>
-                    )}
-
-                    {step === 'otp' && (
-                        <>
-                            <div className="text-center mb-6">
-                                <div className="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600">
-                                    <Lock size={32} />
-                                </div>
-                                <h2 className="text-2xl font-bold">Security Check</h2>
-                                <p className="text-gray text-sm">Enter the OTP sent to your email</p>
-                            </div>
-
-                            <form onSubmit={handleVerifyOtp} className="login-form">
-                                <input
-                                    type="text"
-                                    className="input-field text-center text-3xl font-mono tracking-widest"
-                                    placeholder="0 0 0 0 0 0"
-                                    maxLength={6}
-                                    value={otp}
-                                    onChange={e => setOtp(e.target.value)}
-                                    required
-                                    autoFocus
-                                />
-                                <button type="submit" className="btn btn-primary w-full mt-4">
-                                    Verify & Login
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setStep('credentials')}
-                                    className="btn btn-secondary w-full mt-2"
-                                >
-                                    Cancel
-                                </button>
-                            </form>
-                        </>
-                    )}
-
+                    <p className="signup-link">
+                        Don't have an account? <Link to="/patient/signup">Sign up as Patient</Link>
+                        <span className="separator">|</span>
+                        <Link to="/doctor/signup">Join as Doctor</Link>
+                    </p>
+                    <div className="mt-4 text-center space-y-2">
+                        <a href="/lab/login" className="text-xs font-bold text-teal-600 hover:text-teal-800 flex items-center justify-center gap-1">
+                            <Activity size={14} /> Lab Partner Login
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -247,4 +173,3 @@ const Login = () => {
 };
 
 export default Login;
-

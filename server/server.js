@@ -12,7 +12,7 @@ const app = express();
 
 // ✅ FIX: COOP/COEP headers FIRST — before anything else
 app.use((req, res, next) => {
-    res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
     res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     next();
@@ -79,7 +79,7 @@ const uploadRoutes = require('./routes/uploadRoutes');
 // Enable Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/doctors', doctorRoutes);
-app.use('/api/admins', adminRoutes); // Matching Step 5474, using plural for consistency
+app.use('/api/admin', adminRoutes); 
 app.use('/api/patients', patientRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/records', recordRoutes);
