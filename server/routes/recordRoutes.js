@@ -1,3 +1,4 @@
+// recordRoutes.js - Standardized Medical Record Management System
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
