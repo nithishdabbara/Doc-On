@@ -67,28 +67,12 @@ const SearchDoctors = () => {
         return Math.round((rating / 5) * 100);
     };
 
-    // Helper to predict gender from name (Heuristic for Indian names)
-    const predictGender = (name) => {
-        if (!name) return 'men';
-        const cleanName = String(name).replace('Dr.', '').replace('Dr ', '').trim().toLowerCase();
-        const firstName = cleanName.split(' ')[0];
-
-        // Common Male Exceptions ending in 'a', 'i', etc.
-        const maleExceptions = ['sai', 'ravi', 'hari', 'aditya', 'krishna', 'raja', 'arjun', 'om', 'ali'];
-        if (maleExceptions.includes(firstName)) return 'men';
-
-        // Common Female Suffixes
-        if (firstName.endsWith('a') || firstName.endsWith('i') || firstName.endsWith('ee')) {
-            return 'women';
-        }
-        return 'men'; // Default to men (Vikram, Rahul, Mohammed, etc.)
-    };
 
     const getDoctorImg = (name) => {
-        const gender = predictGender(name);
-        // Using avatar.iran.liara.run for reliable gendered cartoons
-        const type = gender === 'men' ? 'boy' : 'girl';
-        return `https://avatar.iran.liara.run/public/${type}?username=${name}`;
+        // Using ui-avatars for reliable, lightweight initials-based avatars
+        // This avoids the 404/ERR_NAME_NOT_RESOLVED issues with third-party face generators
+        const cleanName = String(name).replace('Dr.', '').replace('Dr ', '').trim();
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanName)}&background=0D8ABC&color=fff&size=256&bold=true`;
     };
 
     return (
