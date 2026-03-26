@@ -37,7 +37,13 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// ✅ Handle preflight requests
+app.options('*', cors());
+
 app.use(express.json());
+
+// Serving static files (Uploads)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Payment Routes (Razorpay)
 app.use('/api/payment', require('./routes/paymentRoutes'));
@@ -68,15 +74,17 @@ const patientRoutes = require('./routes/patientRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const recordRoutes = require('./routes/recordRoutes');
 const labRoutes = require('./routes/labRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 // Enable Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/doctors', doctorRoutes);
-app.use('/api/admins', adminRoutes);
+app.use('/api/admins', adminRoutes); // Matching Step 5474, using plural for consistency
 app.use('/api/patients', patientRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/records', recordRoutes);
 app.use('/api/labs', labRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {
