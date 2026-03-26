@@ -170,15 +170,18 @@ const DoctorDetails = () => {
         try {
             const token = sessionStorage.getItem('token');
             for (let file of files) {
+                const user = JSON.parse(sessionStorage.getItem('user') || '{}');
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('type', 'report');
                 formData.append('title', file.name);
+                formData.append('patientId', user.id || user._id);
 
                 // Use the CORRECT Medical Record Endpoint
                 const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/records/upload`, formData, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
+
                 // Correctly construct URL from record response
                 uploadedUrls.push(`/uploads/${res.data.record.fileUrl}`);
             }

@@ -8,7 +8,11 @@ const { verifyToken } = require('../middleware/auth');
 // Multer Config
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/');
+        const uploadPath = path.join(__dirname, '../uploads');
+        if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+        }
+        cb(null, uploadPath);
     },
     filename: (req, file, cb) => {
         cb(null, Date.now() + path.extname(file.originalname));
@@ -40,8 +44,8 @@ router.post('/upload', verifyToken, blockAdmin, upload.single('file'), async (re
         // If doctor uploads, add self to access list
         const accessList = req.user.type === 'doctor' ? [req.user.id] : [];
 
-        // Fix: If patient uploads, finalPatientId is their ID. 
-        const finalPatientId = req.user.type === 'patient' ? req.user.id : req.body.patientId;
+        // Fix: Explicitly check for both id and _id from JWT or body
+        const finalPatientId = (req.user.type === 'patient' ? (req.user.id || req.user._id) : (req.body.patientId || req.user.id));
 
         if (!finalPatientId) {
             console.error("Missing Patient ID");
@@ -111,6 +115,16 @@ router.get('/file/:filename', verifyToken, blockAdmin, async (req, res) => {
     const { filename } = req.params;
     const filePath = path.join(__dirname, '../uploads', filename);
     res.sendFile(filePath);
+});
+
+// Handling Multer Errors
+router.use((err, req, res, next) => {
+    if (err instanceof multer.MulterError) {
+        return res.status(400).json({ message: 'Multer Error: ' + err.message });
+    } else if (err) {
+        return res.status(500).json({ message: 'Internal Server Error: ' + err.message });
+    }
+    next();
 });
 
 module.exports = router;

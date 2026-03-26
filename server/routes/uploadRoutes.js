@@ -6,7 +6,11 @@ const path = require('path');
 // Configure Storage
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/');
+        const uploadPath = path.join(__dirname, '../uploads');
+        if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+        }
+        cb(null, uploadPath);
     },
     filename: (req, file, cb) => {
         // Unique file name: fieldname-timestamp.ext
