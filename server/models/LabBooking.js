@@ -31,6 +31,10 @@ const labBookingSchema = new mongoose.Schema({
     clinicalNotes: { type: String }, // Private to medical staff
     isCritical: { type: Boolean, default: false }, // AUTO-FLAGGED by AI/Rules
 
+    // Payment Info
+    paymentId: { type: String },
+    orderId: { type: String },
+
     createdAt: { type: Date, default: Date.now }
 });
 

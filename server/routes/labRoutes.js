@@ -222,7 +222,7 @@ router.get('/public/:id', async (req, res) => {
 
 // 3. Book a Test
 router.post('/book', verifyToken, async (req, res) => {
-    const { labId, testIds, date, collectionType, address, totalAmount } = req.body;
+    const { labId, testIds, date, collectionType, address, totalAmount, paymentId, orderId } = req.body;
 
     try {
         // Validate Lab & Tests
@@ -261,6 +261,8 @@ router.post('/book', verifyToken, async (req, res) => {
             totalAmount,
             adminFee,
             providerAmount,
+            paymentId,
+            orderId,
             status: 'scheduled'
         });
 
@@ -295,6 +297,80 @@ router.get('/my-bookings', verifyToken, async (req, res) => {
         res.json(bookings);
     } catch (err) {
         res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+// 4.5 Generate Lab Invoice PDF
+router.get('/booking/:id/invoice', async (req, res) => {
+    try {
+        const PDFDocument = require('pdfkit');
+        const booking = await LabBooking.findById(req.params.id)
+            .populate('labId', 'name address contactNumber')
+            .populate('patientId', 'name email');
+
+        if (!booking) return res.status(404).send('Booking not found');
+
+        const doc = new PDFDocument();
+
+        // Set headers for download
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=LabInvoice-${booking._id}.pdf`);
+
+        doc.pipe(res);
+
+        // --- PDF Content ---
+        doc.fillColor('#0d9488').fontSize(24).text('DocOn Diagnostics', { align: 'center' });
+        doc.fillColor('black').fontSize(10).text('Quality Care, Conveniently Delivered', { align: 'center' });
+        doc.moveDown();
+        doc.fontSize(16).text('Lab Payment Receipt', { align: 'center', underline: true });
+        doc.moveDown();
+
+        // Transaction Info Box
+        doc.rect(50, 150, 500, 110).stroke();
+        doc.fontSize(10).text(`Invoice Number: LAB-${booking._id.toString().slice(-6).toUpperCase()}`, 60, 160);
+        doc.text(`Date: ${new Date(booking.scheduledDate).toLocaleDateString()}`, 60, 180);
+        doc.text(`Payment ID: ${booking.paymentId || 'N/A'}`, 60, 200);
+        doc.text(`Order ID: ${booking.orderId || 'N/A'}`, 60, 220);
+        doc.text(`Status: Paid`, 60, 240);
+
+        // Provider Info
+        doc.text('Diagnostic Centre:', 60, 280, { underline: true });
+        doc.font('Helvetica-Bold').text(booking.labId.name, 60, 295);
+        doc.font('Helvetica').text(booking.labId.address, 60, 310);
+
+        // Patient Info
+        doc.text('Billed To:', 300, 280, { underline: true });
+        doc.font('Helvetica-Bold').text(booking.patientId.name, 300, 295);
+        doc.font('Helvetica').text(`Patient ID: ${booking.patientId._id.toString().slice(-6)}`, 300, 310);
+
+        doc.moveDown(5);
+
+        // Line Items
+        const startY = 360;
+        doc.rect(50, startY, 500, 30).fill('#f3f4f6').stroke();
+        doc.fillColor('black').font('Helvetica-Bold').text('Test Description', 60, startY + 10);
+        doc.text('Price (INR)', 450, startY + 10);
+
+        let currentY = startY + 40;
+        booking.tests.forEach((test, index) => {
+            doc.font('Helvetica').text(test.testName, 60, currentY);
+            doc.text(`${test.price}.00`, 450, currentY);
+            currentY += 20;
+        });
+
+        doc.rect(50, currentY + 10, 500, 0).stroke(); // Line
+
+        doc.font('Helvetica-Bold').text('Total Paid', 350, currentY + 30);
+        doc.fillColor('#0d9488').text(`INR ${booking.totalAmount}.00`, 450, currentY + 30);
+
+        // Footer
+        doc.fillColor('gray').fontSize(8).text('This is a computer-generated medical receipt.', 50, 700, { align: 'center' });
+
+        doc.end();
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Error generating invoice');
     }
 });
 

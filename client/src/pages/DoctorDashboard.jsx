@@ -45,6 +45,7 @@ const DoctorDashboard = () => {
     const [aiLoading, setAiLoading] = useState(false);
     const [aiResponse, setAiResponse] = useState(null);
     const [financials, setFinancials] = useState(null);
+    const [safetyAlerts, setSafetyAlerts] = useState(null);
 
     useEffect(() => {
         if (activeTab === 'financials') {

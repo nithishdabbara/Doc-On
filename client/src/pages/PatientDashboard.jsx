@@ -619,15 +619,25 @@ const PatientDashboard = () => {
 
                                         {/* Payment Info */}
                                         {selectedAppt.paymentId && (
-                                            <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs mt-4">
-                                                <span className="font-bold text-gray-500 block mb-1">Payment Verification</span>
-                                                <div className="flex justify-between">
-                                                    <span>Transaction ID:</span>
-                                                    <span className="font-mono text-gray-800">{selectedAppt.paymentId}</span>
-                                                </div>
-                                                <div className="flex justify-between text-green-600 font-bold mt-1">
-                                                    <span>Status:</span>
-                                                    <span className="flex items-center gap-1"><CheckCircle size={10} /> PAID</span>
+                                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 mt-4 space-y-3">
+                                                <div className="flex justify-between items-center">
+                                                    <div>
+                                                        <span className="font-bold text-gray-500 block text-[10px] uppercase tracking-wider">Payment Verification</span>
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            <span className="font-mono text-xs text-gray-800">{selectedAppt.paymentId}</span>
+                                                            <div className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-teal-50 text-teal-600 border border-teal-100 flex items-center gap-1">
+                                                                <CheckCircle size={8} /> PAID
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <a
+                                                        href={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/patients/appointments/${selectedAppt._id}/invoice`}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="p-2.5 bg-white border border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors shadow-sm flex items-center gap-2 text-xs font-bold"
+                                                    >
+                                                        <Download size={14} /> Receipt
+                                                    </a>
                                                 </div>
                                             </div>
                                         )}
@@ -1617,18 +1627,20 @@ const LabReportsList = ({ user }) => {
                                                 }`}>
                                                 {book.status.replace('_', ' ')}
                                             </span>
-                                            {book.status === 'scheduled' && (
-                                                <button
-                                                    onClick={() => initiateCancel(book._id)}
-                                                    className="text-xs text-red-500 hover:text-red-700 font-bold flex items-center gap-1 bg-red-50 px-2 py-1 rounded border border-red-100 hover:bg-red-100 transition"
-                                                >
-                                                    <Trash2 size={12} /> Cancel
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
+                                                {book.status !== 'cancelled' && (
+                                                    <a
+                                                        href={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/labs/booking/${book._id}/invoice`}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="text-[10px] font-bold text-teal-600 hover:text-teal-700 flex items-center gap-1 mt-1 bg-teal-50 px-2 py-1 rounded border border-teal-100 hover:bg-teal-100 transition"
+                                                    >
+                                                        <Download size={10} /> Download Receipt
+                                                    </a>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
 
                             {/* Stepper for Active Bookings */}
                             {filter !== 'Documents' && (
