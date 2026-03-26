@@ -5,8 +5,15 @@ const dotenv = require('dotenv');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const path = require('path');
+const fs = require('fs'); // Added fs module
 
 dotenv.config();
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 const app = express();
 
