@@ -64,6 +64,14 @@ const Layout = ({ children }) => {
 };
 
 function App() {
+  // ✅ Keep-alive ping — prevents Render cold starts from expiring OTPs
+  React.useEffect(() => {
+    const ping = () => fetch(`${import.meta.env.VITE_API_URL}/api/health`).catch(() => {});
+    ping(); // ping immediately on app load
+    const interval = setInterval(ping, 10 * 60 * 1000); // every 10 min
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <Router>
       <ScrollToTop />
