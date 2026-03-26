@@ -12,8 +12,8 @@ const sendOTP = async (email, otp) => {
         </div>
     `;
     await notificationService.sendEmail(email, subject, html);
-    // Also simulate SMS for OTP
-    // await notificationService.sendSMS(email, `DocOn OTP: ${otp}`);
+    // Console log for easier local development
+    console.log(`\x1b[33m[DEV] OTP for ${email}: ${otp}\x1b[0m`);
 };
 
 const sendVerificationEmail = async (email, token) => {
