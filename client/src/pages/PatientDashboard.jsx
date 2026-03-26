@@ -498,7 +498,7 @@ const PatientDashboard = () => {
 
                                                     {/* Actions */}
                                                     <div className="flex gap-2 mt-3">
-                                                        {apt.paymentId && (
+                                                        {apt.paymentStatus === 'paid' && (
                                                             <a
                                                                 href={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/patients/appointments/${apt._id}/invoice`}
                                                                 target="_blank"

@@ -68,7 +68,7 @@ const PremiumDashboardTab = ({ user, appointments, navigate, setActiveTab }) => 
                                     >
                                         Manage Appointment
                                     </button>
-                                    {nextAppt.paymentId && (
+                                    {nextAppt.paymentStatus === 'paid' && (
                                         <a
                                             href={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/patients/appointments/${nextAppt._id}/invoice`}
                                             target="_blank"
